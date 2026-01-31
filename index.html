@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Hostel Water Manager</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1 id="nodeName">Hostel-WL-01</h1>
+    <nav>
+      <button onclick="switchTab('dashboard')">Dashboard</button>
+      <button onclick="switchTab('alerts')">Alerts</button>
+      <button onclick="switchTab('logic')">Logic</button>
+      <button onclick="switchTab('student')">Student</button>
+    </nav>
+  </header>
+
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="tab active">
+    <div class="card">
+      <h2>Tank Level</h2>
+      <div class="gauge">
+        <span id="tankPercent">72%</span>
+      </div>
+      <p>Status: <span id="statusText">Stable</span></p>
+    </div>
+
+    <button id="pumpBtn" onclick="togglePump()">Pump: OFF</button>
+
+    <label>
+      <input type="checkbox" id="autoCut" checked />
+      Auto Cutoff
+    </label>
+
+    <label>
+      <input type="checkbox" id="nightLock" checked />
+      Night Lock (11PM–5AM)
+    </label>
+  </section>
+
+  <!-- ALERTS -->
+  <section id="alerts" class="tab">
+    <div class="alert red">
+      Overflow detected. Auto shutoff activated.
+    </div>
+    <div class="alert amber">
+      Night usage anomaly detected.
+    </div>
+  </section>
+
+  <!-- LOGIC -->
+  <section id="logic" class="tab">
+    <h2>Automation Rules</h2>
+    <p>• Night Lock: Enabled</p>
+    <p>• Auto Cutoff at 98%</p>
+    <p>• Continuous Runtime Limit: 30 min</p>
+  </section>
+
+  <!-- STUDENT VIEW -->
+  <section id="student" class="tab student">
+    <h1 id="studentStatus">😊</h1>
+    <h2 id="studentText">WATER GOOD</h2>
+  </section>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

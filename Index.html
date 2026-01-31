@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Hostel Water Manager</title>
+
+<style>
+:root{
+  --bg:#121820;
+  --panel:#1a222d;
+  --blue:#3b82f6;
+  --emerald:#10b981;
+  --amber:#f59e0b;
+  --red:#ef4444;
+  --text:#e5e7eb;
+  --muted:#94a3b8;
+}
+
+*{box-sizing:border-box;font-family:system-ui,-apple-system,BlinkMacSystemFont}
+body{
+  margin:0;
+  background:#020617;
+  display:flex;
+  justify-content:center;
+}
+.app{
+  width:100%;
+  max-width:420px;
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+  padding:16px;
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-weight:800;
+}
+.tabs{
+  display:flex;
+  gap:6px;
+  background:var(--panel);
+  padding:6px;
+  border-radius:20px;
+  margin:16px 0;
+}
+.tabs button{
+  flex:1;
+  border:none;
+  background:none;
+  color:var(--muted);
+  padding:10px;
+  border-radius:14px;
+  font-weight:800;
+  cursor:pointer;
+}
+.tabs button.active{
+  background:var(--blue);
+  color:white;
+}
+.card{
+  background:var(--panel);
+  border-radius:24px;
+  padding:20px;
+  margin-bottom:16px;
+}
+.row{display:flex;justify-content:space-between;align-items:center}
+.gauge{
+  width:120px;height:120px;
+  border-radius:50%;
+  border:6px solid #334155;
+  display:flex;align-items:center;justify-content:center;
+}
+.status{
+  font-size:11px;
+  padding:4px 10px;
+  border-radius:999px;
+  display:inline-block;
+  font-weight:800;
+}
+.ok{background:rgba(16,185,129,.15);color:var(--emerald)}
+.bad{background:rgba(239,68,68,.15);color:var(--red)}
+.btn{
+  width:100%;
+  padding:16px;
+  border-radius:20px;
+  border:none;
+  font-weight:900;
+  cursor:pointer;
+}
+.btn.blue{background:var(--blue);color:white}
+.btn.gray{background:#334155;color:white}
+.center{text-align:center}
+.big{font-size:120px}
+.footer{
+  margin-top:24px;
+  text-align:center;
+  font-size:10px;
+  color:var(--muted);
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <div class="header">
+    <div id="node">Hostel-WL-01</div>
+    <div>⚙️</div>
+  </div>
+
+  <div class="tabs">
+    <button class="active" onclick="switchTab('dash',this)">Dash</button>
+    <button onclick="switchTab('alerts',this)">Alerts</button>
+    <button onclick="switchTab('student',this)">Student</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dash">
+    <div class="card">
+      <div class="row">
+        <div class="gauge">
+          <div class="center">
+            <div id="level" style="font-size:30px;font-weight:900">72%</div>
+            <div style="font-size:10px;color:var(--muted)">CAPACITY</div>
+          </div>
+        </div>
+        <div>
+          <div id="status" class="status ok">Stable Supply</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px">Total Volume</div>
+          <div style="font-size:32px;font-weight:900" id="volume">14400 L</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn blue" onclick="togglePump()">
+      ⚡ MAIN PUMP: <span id="pump">READY</span>
+    </button>
+  </div>
+
+  <!-- ALERTS -->
+  <div id="alerts" style="display:none">
+    <div class="card">
+      <strong style="color:var(--red)">🚨 Overflow Prevented</strong>
+      <p>Auto cut-off engaged at 98%.</p>
+    </div>
+    <div class="card">
+      <strong style="color:var(--amber)">⚠️ Leak Detected</strong>
+      <p>Abnormal flow during night hours.</p>
+    </div>
+  </div>
+
+  <!-- STUDENT -->
+  <div id="student" style="display:none" class="center">
+    <div id="emoji" class="big">😊</div>
+    <h1 id="studentText">WATER OK</h1>
+    <p id="studentMsg">Normal usage allowed</p>
+    <button class="btn gray" onclick="switchTab('dash',document.querySelector('.tabs button'))">Back</button>
+  </div>
+
+  <div class="footer">
+    Smart Hostel Water Manager · Static HTML Build
+  </div>
+
+</div>
+
+<script>
+let tank = 72;
+let pumpOn = false;
+
+function updateUI(){
+  document.getElementById("level").innerText = tank + "%";
+  document.getElementById("volume").innerText = (tank*200).toFixed(0) + " L";
+  document.getElementById("pump").innerText = pumpOn ? "RUNNING" : "READY";
+
+  const status = document.getElementById("status");
+  const emoji = document.getElementById("emoji");
+  const text = document.getElementById("studentText");
+  const msg = document.getElementById("studentMsg");
+
+  if(tank < 20){
+    status.className="status bad";
+    status.innerText="CRITICAL";
+    emoji.innerText="☹️";
+    text.innerText="WATER LOW";
+    msg.innerText="Emergency shortage expected";
+  }else if(tank < 50){
+    emoji.innerText="😐";
+    text.innerText="LIMITED";
+    msg.innerText="Please conserve water";
+  }else{
+    status.className="status ok";
+    status.innerText="Stable Supply";
+    emoji.innerText="😊";
+    text.innerText="WATER OK";
+    msg.innerText="Normal usage allowed";
+  }
+}
+
+function togglePump(){
+  pumpOn = !pumpOn;
+  updateUI();
+}
+
+function switchTab(tab,btn){
+  ["dash","alerts","student"].forEach(t=>{
+    document.getElementById(t).style.display="none";
+  });
+  document.getElementById(tab).style.display="block";
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+setInterval(()=>{
+  tank += pumpOn ? 1 : -0.3;
+  if(tank >= 98){tank=98;pumpOn=false;}
+  if(tank < 0) tank = 0;
+  updateUI();
+},1000);
+
+updateUI();
+</script>
+
+</body>
+</html>

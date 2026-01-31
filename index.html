@@ -1,71 +1,376 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Smart Hostel Water Manager</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Hostel Water Manager</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #020617; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .gauge-circle { transition: stroke-dasharray 1s ease-in-out; }
+        .overlay-bg { transition: opacity 0.4s ease; }
+        .overlay-content { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Smooth transition for the Area Chart path */
+        #trend-path { transition: d 0.5s ease; }
+    </style>
 </head>
-<body>
+<body class="flex justify-center overflow-hidden select-none">
 
-<div class="app">
-  <header>
-    <h1 id="nodeName">Hostel-WL-01</h1>
-    <nav>
-      <button onclick="switchTab('dashboard')">Dashboard</button>
-      <button onclick="switchTab('alerts')">Alerts</button>
-      <button onclick="switchTab('logic')">Logic</button>
-      <button onclick="switchTab('student')">Student</button>
-    </nav>
-  </header>
+    <div id="app-container" class="w-full max-w-md h-screen flex flex-col bg-[#121820] relative shadow-2xl border-x border-white/5">
+        
+        <!-- Header -->
+        <header id="main-header" class="p-4 pt-10 relative z-40 bg-[#121820]">
+            <div class="flex justify-between items-center mb-6 px-2">
+                <button onclick="toggleMenu(true)" class="text-slate-400 p-3 bg-slate-800/40 hover:bg-slate-800 rounded-2xl active:scale-90 transition-all border border-white/5">
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+                <div class="flex flex-col items-center">
+                    <h1 id="active-node-display" class="text-white font-black uppercase text-[10px] tracking-[0.3em]">Hostel-WL-01</h1>
+                    <div class="flex gap-1 mt-1">
+                        <div class="w-1 h-1 rounded-full bg-blue-500 animate-pulse"></div>
+                        <div class="w-1 h-1 rounded-full bg-blue-500/40"></div>
+                        <div class="w-1 h-1 rounded-full bg-blue-500/40"></div>
+                    </div>
+                </div>
+                <button onclick="toggleSettings(true)" class="text-slate-400 p-3 bg-slate-800/40 hover:bg-slate-800 rounded-2xl active:scale-90 transition-all border border-white/5">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="flex gap-1 bg-[#1a222d] p-1.5 rounded-[1.5rem] border border-slate-800/80 shadow-inner">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="flex-1 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-300 bg-blue-600 text-white shadow-xl scale-[1.02]">Dash</button>
+                <button onclick="switchTab('alerts')" id="tab-alerts" class="flex-1 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-300 text-slate-500 hover:text-slate-400">Alerts</button>
+                <button onclick="switchTab('logic')" id="tab-logic" class="flex-1 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-300 text-slate-500 hover:text-slate-400">Logic</button>
+                <button onclick="switchTab('student')" id="tab-student" class="flex-1 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-300 text-slate-500 hover:text-slate-400">Student</button>
+            </div>
+        </header>
 
-  <!-- DASHBOARD -->
-  <section id="dashboard" class="tab active">
-    <div class="card">
-      <h2>Tank Level</h2>
-      <div class="gauge">
-        <span id="tankPercent">72%</span>
-      </div>
-      <p>Status: <span id="statusText">Stable</span></p>
+        <!-- Content Area -->
+        <div id="content" class="flex-1 flex flex-col overflow-y-auto hide-scrollbar"></div>
+
+        <!-- Settings Overlay -->
+        <div id="settings-overlay" class="absolute inset-0 z-[100] invisible pointer-events-none">
+            <div class="overlay-bg absolute inset-0 bg-black/60 backdrop-blur-md opacity-0 pointer-events-auto" onclick="toggleSettings(false)"></div>
+            <div class="overlay-content absolute bottom-0 inset-x-0 bg-[#1a222d] rounded-t-[3.5rem] p-10 space-y-8 translate-y-full border-t border-white/5 shadow-2xl pointer-events-auto">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-white font-black text-2xl tracking-tight">Preferences</h2>
+                        <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Configuration v2.4</p>
+                    </div>
+                    <button onclick="toggleSettings(false)" class="text-slate-400 p-3 bg-slate-800/50 rounded-full hover:bg-slate-800 transition-colors">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="space-y-5">
+                    <div class="bg-slate-800/30 p-5 rounded-3xl flex items-center justify-between border border-white/5">
+                        <div class="flex items-center gap-4">
+                            <div class="p-3 bg-blue-500/10 rounded-2xl"><i data-lucide="database" class="text-blue-400 w-5 h-5"></i></div>
+                            <span class="text-white text-sm font-black uppercase tracking-wider">Metrics Unit</span>
+                        </div>
+                        <select onchange="updateSetting('unit', this.value)" id="unit-select" class="bg-slate-800 text-white text-xs font-black rounded-xl px-4 py-2 border border-slate-700 outline-none">
+                            <option value="Liters">Liters</option>
+                            <option value="Percentage">Percentage</option>
+                        </select>
+                    </div>
+                    <div class="bg-slate-800/30 p-5 rounded-3xl space-y-4 border border-white/5">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="p-3 bg-red-500/10 rounded-2xl"><i data-lucide="alert-triangle" class="text-red-400 w-5 h-5"></i></div>
+                                <span class="text-white text-sm font-black uppercase tracking-wider">Threshold</span>
+                            </div>
+                            <span id="threshold-val" class="text-red-400 font-mono font-black text-sm">20%</span>
+                        </div>
+                        <input type="range" min="5" max="40" value="20" oninput="updateSetting('threshold', this.value)" class="w-full h-2 bg-slate-800 rounded-lg appearance-none accent-blue-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Node Menu Overlay -->
+        <div id="side-menu" class="absolute inset-0 z-[110] invisible pointer-events-none">
+            <div class="overlay-bg absolute inset-0 bg-black/60 opacity-0 pointer-events-auto" onclick="toggleMenu(false)"></div>
+            <div class="overlay-content absolute inset-y-0 left-0 w-[85%] bg-[#1a222d] -translate-x-full shadow-2xl p-10 flex flex-col pointer-events-auto">
+                <div class="flex justify-between items-center mb-12">
+                    <div class="flex items-center gap-3">
+                       <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white italic">SH</div>
+                       <h2 class="text-white font-black text-xl tracking-tighter">SmartHostel</h2>
+                    </div>
+                    <button onclick="toggleMenu(false)" class="text-slate-500 p-2 hover:bg-slate-800 rounded-full transition-colors"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
+                <div class="space-y-3 flex-1" id="node-list">
+                    <!-- Nodes injected here via initNodeList() -->
+                </div>
+            </div>
+        </div>
+
+        <div id="app-footer" class="absolute bottom-6 left-0 right-0 px-10 flex justify-between items-center opacity-40 pointer-events-none z-10">
+            <div class="flex items-center gap-2">
+              <div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+              <span class="text-[9px] font-black text-white uppercase tracking-widest">Secure Cloud Sync</span>
+            </div>
+            <span class="text-[9px] font-black text-white uppercase tracking-widest">Encrypted</span>
+        </div>
     </div>
 
-    <button id="pumpBtn" onclick="togglePump()">Pump: OFF</button>
+    <script>
+        // --- DATA ---
+        let activeTab = 'dashboard';
+        let tankLevel = 72.4;
+        let isPumpOn = false;
+        let autoCutoff = true;
+        let nightLimit = true;
+        let activeNode = 'Hostel-WL-01';
+        let unit = 'Liters';
+        let threshold = 20;
 
-    <label>
-      <input type="checkbox" id="autoCut" checked />
-      Auto Cutoff
-    </label>
+        const trendData = [
+            { h: 0, v: 40 }, { h: 4, v: 35 }, { h: 8, v: 55 }, 
+            { h: 12, v: 45 }, { h: 16, v: 75 }, { h: 20, v: 60 }
+        ];
 
-    <label>
-      <input type="checkbox" id="nightLock" checked />
-      Night Lock (11PM–5AM)
-    </label>
-  </section>
+        const nodes = ['Hostel-WL-01', 'Hostel-WL-02', 'Staff-QT-A', 'Canteen-S1'];
 
-  <!-- ALERTS -->
-  <section id="alerts" class="tab">
-    <div class="alert red">
-      Overflow detected. Auto shutoff activated.
-    </div>
-    <div class="alert amber">
-      Night usage anomaly detected.
-    </div>
-  </section>
+        // --- SIMULATION ---
+        setInterval(() => {
+            const hour = new Date().getHours();
+            if (nightLimit && (hour >= 23 || hour < 5) && isPumpOn) isPumpOn = false;
 
-  <!-- LOGIC -->
-  <section id="logic" class="tab">
-    <h2>Automation Rules</h2>
-    <p>• Night Lock: Enabled</p>
-    <p>• Auto Cutoff at 98%</p>
-    <p>• Continuous Runtime Limit: 30 min</p>
-  </section>
+            let change = isPumpOn ? 0.65 : -0.08;
+            tankLevel = Math.max(0, Math.min(100, tankLevel + change));
+            
+            if (autoCutoff && tankLevel >= 98 && isPumpOn) { isPumpOn = false; tankLevel = 98.0; }
+            updateTankDisplays();
+        }, 1000);
 
-  <!-- STUDENT VIEW -->
-  <section id="student" class="tab student">
-    <h1 id="studentStatus">😊</h1>
-    <h2 id="studentText">WATER GOOD</h2>
-  </section>
-</div>
+        // --- GRAPH LOGIC (Recreating ResponsiveContainer/AreaChart) ---
+        function generateGraphSVG() {
+            const width = 300;
+            const height = 80;
+            // Map trendData + current value to SVG points
+            const points = [...trendData, { h: 24, v: Math.round(tankLevel) }];
+            const maxV = 100;
+            const stepX = width / (points.length - 1);
+            
+            let pathData = `M 0 ${height - (points[0].v / maxV * height)}`;
+            points.forEach((p, i) => {
+                const x = i * stepX;
+                const y = height - (p.v / maxV * height);
+                pathData += ` L ${x} ${y}`;
+            });
 
-<script src="script.js"></script>
+            const fillPath = pathData + ` L ${width} ${height} L 0 ${height} Z`;
+
+            return `
+                <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" class="w-full h-full opacity-80">
+                    <defs>
+                        <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stop-color="#3b82f6" stop-opacity="0.3"/>
+                            <stop offset="95%" stop-color="#3b82f6" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="${fillPath}" fill="url(#grad)" />
+                    <path id="trend-path" d="${pathData}" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            `;
+        }
+
+        // --- UI ROUTING ---
+        function switchTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                btn.className = `flex-1 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${btn.id === 'tab-'+tab ? 'bg-blue-600 text-white shadow-xl scale-[1.02]' : 'text-slate-500 hover:text-slate-400'}`;
+            });
+            document.getElementById('main-header').classList.toggle('hidden', tab === 'student');
+            document.getElementById('app-footer').classList.toggle('hidden', tab === 'student');
+            render();
+        }
+
+        function render() {
+            const container = document.getElementById('content');
+            if (activeTab === 'dashboard') {
+                container.innerHTML = `
+                    <div class="p-4 space-y-4 pb-24 animate-in fade-in duration-500">
+                        <div class="bg-[#1a222d] rounded-[2.5rem] p-6 border border-slate-800 shadow-2xl relative overflow-hidden group">
+                            <div class="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors"></div>
+                            <div class="flex justify-between items-start mb-6 relative z-10">
+                                <div class="relative w-32 h-32 flex items-center justify-center">
+                                    <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
+                                        <circle cx="18" cy="18" r="16" fill="none" class="stroke-slate-800" stroke-width="3" />
+                                        <circle id="tank-circle" cx="18" cy="18" r="16" fill="none" class="gauge-circle" stroke-width="3" stroke-linecap="round" />
+                                    </svg>
+                                    <div class="flex flex-col items-center">
+                                        <span id="txt-percent" class="text-white text-3xl font-black leading-none">0%</span>
+                                        <span class="text-[10px] text-slate-500 font-bold tracking-widest mt-1">CAPACITY</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div id="badge-supply" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase mb-3 inline-flex items-center gap-1"></div>
+                                    <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">Total Volume</p>
+                                    <h2 class="text-white text-4xl font-black tracking-tighter">
+                                        <span id="txt-vol">0</span><span class="text-slate-600 text-lg ml-1 font-bold" id="txt-unit">L</span>
+                                    </h2>
+                                </div>
+                            </div>
+                            <!-- AREA CHART REPLACEMENT -->
+                            <div class="h-20 w-full mb-6" id="graph-container">${generateGraphSVG()}</div>
+                            <div class="grid grid-cols-2 gap-4 border-t border-slate-800/50 pt-5">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-orange-500/10 rounded-xl"><i data-lucide="clock" class="text-orange-400 w-4 h-4"></i></div>
+                                    <div><p class="text-slate-500 text-[8px] font-bold uppercase tracking-wider">Est. Runout</p><p id="txt-runout" class="text-white text-sm font-black">0 Hrs</p></div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-blue-500/10 rounded-xl"><i data-lucide="trending-down" class="text-blue-400 w-4 h-4"></i></div>
+                                    <div><p class="text-slate-500 text-[8px] font-bold uppercase tracking-wider">Consumption</p><p class="text-white text-sm font-black">Moderate</p></div>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="togglePump()" id="btn-pump" class="group w-full p-6 rounded-[2rem] border transition-all active:scale-95 flex items-center justify-between"></button>
+                        <div class="bg-[#1a222d] p-5 rounded-[2rem] border border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="p-3 rounded-xl bg-slate-800/50"><i data-lucide="shield-check" class="text-blue-400 w-5 h-5"></i></div>
+                                <div class="text-left"><p class="text-sm font-bold text-white leading-tight">Smart Cut-off</p><p class="text-[10px] text-slate-500 mt-0.5 font-bold uppercase tracking-wider">Auto-safety @ 98%</p></div>
+                            </div>
+                            <button onclick="toggleLogic('auto')" class="w-14 h-7 rounded-full relative transition-all duration-300 ${autoCutoff ? 'bg-emerald-500' : 'bg-slate-700'}">
+                                <div class="w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${autoCutoff ? 'translate-x-8' : 'translate-x-1'}"></div>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (activeTab === 'alerts') {
+                container.innerHTML = `
+                    <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24 animate-in slide-in-from-right duration-500">
+                        <div class="flex justify-between items-end px-2 mb-2">
+                            <h2 class="text-white font-black text-2xl tracking-tighter">Incident Reports</h2>
+                            <span class="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em]">LIVE LOG</span>
+                        </div>
+                        <div class="bg-red-500/10 border border-red-500/30 rounded-[2rem] p-5 flex gap-5 relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                            <div class="p-3 bg-red-500/20 rounded-2xl h-fit"><i data-lucide="alert-triangle" class="text-red-500 w-6 h-6"></i></div>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-center mb-1"><p class="text-red-500 font-black text-[10px] uppercase tracking-widest">Critical Overflow</p><span class="text-slate-500 font-mono text-[9px]">01:30 AM</span></div>
+                                <p class="text-white text-sm font-semibold leading-relaxed">North Block Overhead Tank hit 100%. Safety shut-off engaged.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (activeTab === 'student') {
+                container.innerHTML = `
+                    <div id="student-container" class="flex-1 flex flex-col items-center justify-center p-8 space-y-12 transition-colors duration-1000 h-full overflow-hidden">
+                        <div class="bg-white/95 p-16 rounded-[5rem] shadow-2xl relative">
+                            <i data-lucide="droplet" id="student-icon" class="w-[120px] h-[120px] fill-current"></i>
+                            <div id="student-emoji" class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[9rem]">😊</div>
+                        </div>
+                        <div class="text-center text-white space-y-6">
+                            <h1 id="student-text" class="text-6xl font-black uppercase tracking-tighter leading-none">WATER:<br/>GOOD</h1>
+                            <div class="bg-black/20 backdrop-blur-md px-6 py-2 rounded-full inline-block text-xs font-black uppercase tracking-widest" id="student-subtext"></div>
+                        </div>
+                        <button onclick="switchTab('dashboard')" class="absolute top-10 left-8 p-5 bg-black/20 hover:bg-black/30 rounded-3xl text-white backdrop-blur-xl border border-white/10 shadow-xl"><i data-lucide="chevron-left" class="w-7 h-7"></i></button>
+                    </div>
+                `;
+            } else if (activeTab === 'logic') {
+                container.innerHTML = `
+                    <div class="p-4 space-y-6 pb-24">
+                        <div class="px-2"><h2 class="text-white font-black text-2xl tracking-tighter">Automation Rules</h2></div>
+                        <div class="bg-[#1a222d] p-6 rounded-[2rem] border border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-5">
+                                <div class="p-4 rounded-2xl bg-blue-500/10"><i data-lucide="moon" class="text-blue-400 w-6 h-6"></i></div>
+                                <div><p class="text-white font-black text-base uppercase tracking-tighter">Night Lockout</p><p class="text-slate-500 text-[10px] font-bold uppercase mt-1">11 PM - 5 AM curfew</p></div>
+                            </div>
+                            <button onclick="toggleLogic('night')" class="w-14 h-7 rounded-full relative transition-all duration-300 ${nightLimit ? 'bg-blue-500' : 'bg-slate-700'}">
+                                <div class="w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${nightLimit ? 'translate-x-8' : 'translate-x-1'}"></div>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+            updateTankDisplays();
+        }
+
+        function updateTankDisplays() {
+            if (activeTab === 'dashboard') {
+                const circle = document.getElementById('tank-circle');
+                if (circle) {
+                    circle.style.strokeDasharray = `${tankLevel}, 100`;
+                    circle.style.stroke = tankLevel > threshold ? '#3b82f6' : '#ef4444';
+                }
+                document.getElementById('txt-percent').innerText = Math.round(tankLevel) + '%';
+                document.getElementById('txt-vol').innerText = unit === 'Liters' ? Math.round(tankLevel * 200) : Math.round(tankLevel);
+                document.getElementById('txt-unit').innerText = unit === 'Liters' ? 'L' : '%';
+                document.getElementById('txt-runout').innerText = `~${(tankLevel * 0.15).toFixed(1)} Hrs`;
+                
+                const badge = document.getElementById('badge-supply');
+                badge.className = `px-3 py-1 rounded-full text-[10px] font-bold uppercase mb-3 inline-flex items-center gap-1 ${tankLevel > threshold ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400 animate-pulse'}`;
+                badge.innerHTML = `<div class="w-1.5 h-1.5 rounded-full ${tankLevel > threshold ? 'bg-emerald-400' : 'bg-red-400'}"></div>${tankLevel > threshold ? 'Stable Supply' : 'Critical Level'}`;
+
+                const btn = document.getElementById('btn-pump');
+                btn.className = `group w-full p-6 rounded-[2rem] border transition-all active:scale-95 flex items-center justify-between ${isPumpOn ? 'bg-blue-600 border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.3)]' : 'bg-[#1a222d] border-slate-800'}`;
+                btn.innerHTML = `
+                    <div class="flex items-center gap-5">
+                        <div class="p-4 rounded-2xl ${isPumpOn ? 'bg-white/20' : 'bg-slate-800'}"><i data-lucide="zap" class="${isPumpOn ? 'text-white' : 'text-slate-500'} w-6 h-6"></i></div>
+                        <div class="text-left"><p class="text-base font-black text-white uppercase leading-tight">MAIN PUMP: ${isPumpOn ? 'ACTIVE' : 'READY'}</p><p class="text-[10px] mt-0.5 font-bold uppercase tracking-widest ${isPumpOn ? 'text-white/70' : 'text-slate-500'}">${isPumpOn ? 'Refilling at 0.65%/s' : 'Tap to initialize refill'}</p></div>
+                    </div>
+                    <div class="w-4 h-4 rounded-full border-2 border-white/20 ${isPumpOn ? 'bg-white animate-ping' : 'bg-slate-700'}"></div>
+                `;
+                lucide.createIcons();
+            } else if (activeTab === 'student') {
+                const cont = document.getElementById('student-container');
+                const icon = document.getElementById('student-icon');
+                const emoji = document.getElementById('student-emoji');
+                const title = document.getElementById('student-text');
+                const sub = document.getElementById('student-subtext');
+
+                if (tankLevel > threshold) {
+                    cont.style.backgroundColor = '#10b981'; icon.style.color = '#10b981'; emoji.innerText = '😊'; title.innerHTML = 'WATER:<br/>GOOD'; sub.innerText = 'Normal consumption allowed';
+                } else if (tankLevel > 10) {
+                    cont.style.backgroundColor = '#f59e0b'; icon.style.color = '#f59e0b'; emoji.innerText = '😐'; title.innerHTML = 'WATER:<br/>FAIR'; sub.innerText = 'Limited usage advised';
+                } else {
+                    cont.style.backgroundColor = '#ef4444'; icon.style.color = '#ef4444'; emoji.innerText = '☹️'; title.innerHTML = 'WATER:<br/>LOW'; sub.innerText = 'Emergency shortage expected';
+                }
+            }
+        }
+
+        // --- HANDLERS ---
+        function togglePump() { isPumpOn = !isPumpOn; render(); }
+        function toggleLogic(type) { if(type==='night') nightLimit=!nightLimit; else autoCutoff=!autoCutoff; render(); }
+        function toggleSettings(s) { 
+            const o = document.getElementById('settings-overlay');
+            o.classList.toggle('invisible', !s);
+            o.querySelector('.overlay-bg').style.opacity = s ? '1' : '0';
+            o.querySelector('.overlay-content').style.transform = s ? 'translateY(0)' : 'translateY(100%)';
+        }
+        function toggleMenu(s) {
+            const o = document.getElementById('side-menu');
+            o.classList.toggle('invisible', !s);
+            o.querySelector('.overlay-bg').style.opacity = s ? '1' : '0';
+            o.querySelector('.overlay-content').style.transform = s ? 'translateX(0)' : 'translateX(-100%)';
+            if(s) initNodeList();
+        }
+        function updateSetting(k, v) {
+            if(k==='unit') unit = v;
+            else { threshold = parseInt(v); document.getElementById('threshold-val').innerText = v+'%'; }
+            render();
+        }
+        function initNodeList() {
+            const list = document.getElementById('node-list');
+            list.innerHTML = nodes.map(n => `
+                <button onclick="selectNode('${n}')" class="w-full p-5 rounded-[2rem] flex items-center justify-between transition-all ${activeNode === n ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800/40 text-slate-400'}">
+                    <div class="flex items-center gap-4"><i data-lucide="smartphone" class="w-5 h-5"></i><span class="font-black text-xs uppercase tracking-widest">${n}</span></div>
+                    ${activeNode === n ? '<i data-lucide="check-circle-2" class="w-5 h-5"></i>' : '<i data-lucide="chevron-right" class="w-5 h-5"></i>'}
+                </button>
+            `).join('');
+            lucide.createIcons();
+        }
+        function selectNode(n) { activeNode = n; document.getElementById('active-node-display').innerText = n; toggleMenu(false); render(); }
+
+        window.onload = () => switchTab('dashboard');
+    </script>
 </body>
 </html>
+
